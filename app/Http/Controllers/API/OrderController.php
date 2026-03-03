@@ -5,18 +5,31 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
-use App\Mail\OrderStatusNotification; // Importante para los avisos por correo
+use App\Mail\OrderStatusNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Mail; // Para disparar los correos
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
     // 1. LISTAR PEDIDOS
+    /**
+ * @OA\Get(
+ *     path="/api/orders",
+ *     tags={"Pedidos"},
+ *     summary="Listar pedidos",
+ *     description="Admin ve todos los pedidos. Cliente solo ve los suyos.",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="status", in="query", required=false,
+ *         @OA\Schema(type="string", enum={"solicitado","cotizado","aceptado","en_produccion","listo","entregado","rechazado"})
+ *     ),
+ *     @OA\Response(response=200, description="Lista paginada de pedidos")
+ * )
+ */
     public function index(Request $request): JsonResponse
     {
         $user  = auth('api')->user();
@@ -41,6 +54,45 @@ class OrderController extends Controller
     }
 
     // 2. CREAR NUEVO PEDIDO (CLIENTE)
+    /**
+ * @OA\Post(
+ *     path="/api/orders",
+ *     tags={"Pedidos"},
+ *     summary="Crear nuevo pedido",
+ *     description="El cliente sube su diseño STL/OBJ junto con las especificaciones.",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\MediaType(
+ *             mediaType="multipart/form-data",
+ *             @OA\Schema(
+ *                 @OA\Property(property="notes", type="string", example="Quiero acabado liso"),
+ *                 @OA\Property(property="end_use", type="string", example="prototipo"),
+ *                 @OA\Property(property="deadline", type="string", format="date", example="2026-04-01"),
+ *                 @OA\Property(property="files[]", type="array", @OA\Items(type="string", format="binary")),
+ *                 @OA\Property(property="items[0][piece_name]", type="string", example="Soporte de cámara"),
+ *                 @OA\Property(property="items[0][quantity]", type="integer", example=2),
+ *                 @OA\Property(property="items[0][material_id]", type="integer", example=1),
+ *                 @OA\Property(property="items[0][color_id]", type="integer", example=3),
+ *                 @OA\Property(property="items[0][finish_id]", type="integer", example=1),
+ *                 @OA\Property(property="items[0][infill_percent]", type="integer", example=20),
+ *                 @OA\Property(property="items[0][dim_x]", type="number", example=50),
+ *                 @OA\Property(property="items[0][dim_y]", type="number", example=30),
+ *                 @OA\Property(property="items[0][dim_z]", type="number", example=20)
+ *             )
+ *         )
+ *     ),
+ *     @OA\Response(response=201, description="Pedido creado exitosamente",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="message", type="string"),
+ *             @OA\Property(property="ticket", type="string", example="MC-0042"),
+ *             @OA\Property(property="order", type="object")
+ *         )
+ *     ),
+ *     @OA\Response(response=422, description="Error de validación"),
+ *     @OA\Response(response=500, description="Error interno")
+ * )
+ */
     public function store(Request $request): JsonResponse
     {
         $request->validate([
@@ -114,6 +166,18 @@ class OrderController extends Controller
     }
 
     // 3. MOSTRAR DETALLES
+    /**
+ * @OA\Get(
+ *     path="/api/orders/{id}",
+ *     tags={"Pedidos"},
+ *     summary="Ver detalle de un pedido",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer"), example=1),
+ *     @OA\Response(response=200, description="Detalle completo del pedido con historial"),
+ *     @OA\Response(response=403, description="No autorizado"),
+ *     @OA\Response(response=404, description="Pedido no encontrado")
+ * )
+ */
     public function show(Order $order): JsonResponse
     {
         $user = auth('api')->user();
@@ -134,6 +198,32 @@ class OrderController extends Controller
     }
 
     // 4. ESTABLECER COTIZACIÓN (ADMIN)
+    /**
+ * @OA\Patch(
+ *     path="/api/orders/{id}/quote",
+ *     tags={"Pedidos - Admin"},
+ *     summary="Enviar cotización al cliente",
+ *     description="Solo el administrador puede cotizar. El pedido debe estar en estado 'solicitado'.",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             required={"quoted_price"},
+ *             @OA\Property(property="quoted_price", type="number", format="float", example=850.00),
+ *             @OA\Property(property="admin_notes", type="string", example="Incluye lijado y envío en 5 días hábiles.")
+ *         )
+ *     ),
+ *     @OA\Response(response=200, description="Cotización enviada",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="message", type="string"),
+ *             @OA\Property(property="order", type="object")
+ *         )
+ *     ),
+ *     @OA\Response(response=403, description="Solo el admin puede cotizar"),
+ *     @OA\Response(response=422, description="Estado inválido o precio requerido")
+ * )
+ */
     public function quote(Request $request, Order $order): JsonResponse
     {
         $user = auth('api')->user();
@@ -172,6 +262,26 @@ class OrderController extends Controller
     }
 
     // 5. RESPONDER A COTIZACIÓN (CLIENTE)
+    /**
+ * @OA\Patch(
+ *     path="/api/orders/{id}/respond",
+ *     tags={"Pedidos"},
+ *     summary="Cliente acepta o rechaza la cotización",
+ *     description="Solo el dueño del pedido puede responder. El pedido debe estar en estado 'cotizado'.",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             required={"action"},
+ *             @OA\Property(property="action", type="string", enum={"accept","reject"}, example="accept"),
+ *             @OA\Property(property="note", type="string", example="El precio me parece alto.")
+ *         )
+ *     ),
+ *     @OA\Response(response=200, description="Respuesta registrada"),
+ *     @OA\Response(response=403, description="No autorizado o estado inválido")
+ * )
+ */
     public function respond(Request $request, Order $order): JsonResponse
     {
         $user = auth('api')->user();
@@ -208,6 +318,27 @@ class OrderController extends Controller
     }
 
     // 6. ACTUALIZAR ESTADO (ADMIN)
+    /**
+ * @OA\Patch(
+ *     path="/api/orders/{id}/status",
+ *     tags={"Pedidos - Admin"},
+ *     summary="Actualizar estado de producción",
+ *     description="Solo admin. Transiciones válidas: aceptado→en_produccion→listo→entregado. Envía correo automático al cliente.",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             required={"status"},
+ *             @OA\Property(property="status", type="string", enum={"en_produccion","listo","entregado"}),
+ *             @OA\Property(property="note", type="string", example="Iniciando impresión")
+ *         )
+ *     ),
+ *     @OA\Response(response=200, description="Estado actualizado y correo enviado"),
+ *     @OA\Response(response=422, description="Transición de estado inválida"),
+ *     @OA\Response(response=403, description="Solo el admin puede hacer esto")
+ * )
+ */
     public function updateStatus(Request $request, Order $order): JsonResponse
     {
         $user = auth('api')->user();
@@ -262,6 +393,19 @@ class OrderController extends Controller
     }
 
     // 7. DESCARGAR ARCHIVO SEGURO
+    /**
+ * @OA\Get(
+ *     path="/api/orders/files/{fileId}/download",
+ *     tags={"Pedidos"},
+ *     summary="Descargar archivo STL/OBJ de un pedido",
+ *     description="Admin descarga cualquier archivo. Cliente solo descarga archivos de sus propios pedidos.",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="fileId", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Descarga del archivo"),
+ *     @OA\Response(response=403, description="No autorizado"),
+ *     @OA\Response(response=404, description="Archivo no encontrado")
+ * )
+ */
     public function downloadFile($fileId)
     {
         $user = auth('api')->user();
@@ -281,6 +425,31 @@ class OrderController extends Controller
     }
 
     // 8. SUBIR COMPROBANTE DE PAGO (CLIENTE)
+    /**
+ * @OA\Post(
+ *     path="/api/orders/{id}/payment-proof",
+ *     tags={"Pedidos"},
+ *     summary="Subir comprobante de pago",
+ *     description="El cliente sube una imagen de su comprobante. El admin la valida manualmente.",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\MediaType(
+ *             mediaType="multipart/form-data",
+ *             @OA\Schema(
+ *                 required={"proof"},
+ *                 @OA\Property(property="proof", type="string", format="binary",
+ *                     description="Imagen del comprobante (JPG/PNG, máx 5MB)")
+ *             )
+ *         )
+ *     ),
+ *     @OA\Response(response=200, description="Comprobante subido exitosamente"),
+ *     @OA\Response(response=400, description="No se recibió archivo"),
+ *     @OA\Response(response=403, description="No autorizado"),
+ *     @OA\Response(response=422, description="Archivo inválido")
+ * )
+ */
     public function uploadPaymentProof(Request $request, Order $order): JsonResponse
     {
         $request->validate([
