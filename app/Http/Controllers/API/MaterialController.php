@@ -11,6 +11,17 @@ use Illuminate\Http\Request;
 class MaterialController extends Controller
 {
     // GET /api/materials
+    /**
+ * @OA\Get(
+ *     path="/api/materials",
+ *     tags={"Materiales"},
+ *     summary="Listar materiales con colores (público)",
+ *     @OA\Response(
+ *         response=200,
+ *         description="Lista de materiales activos con sus colores disponibles"
+ *     )
+ * )
+ */
     public function index(): JsonResponse
     {
         return response()->json(Material::active()->with('colors')->get());
@@ -23,6 +34,26 @@ class MaterialController extends Controller
     }
 
     // POST /api/materials
+    /**
+ * @OA\Post(
+ *     path="/api/materials",
+ *     tags={"Materiales - Admin"},
+ *     summary="Crear material (solo admin)",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             required={"name","density_g_cm3","price_per_gram"},
+ *             @OA\Property(property="name", type="string", example="PLA"),
+ *             @OA\Property(property="density_g_cm3", type="number", example=1.24),
+ *             @OA\Property(property="price_per_gram", type="number", example=2.00),
+ *             @OA\Property(property="active", type="boolean", example=true)
+ *         )
+ *     ),
+ *     @OA\Response(response=201, description="Material creado"),
+ *     @OA\Response(response=422, description="Error de validación")
+ * )
+ */
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -35,6 +66,25 @@ class MaterialController extends Controller
     }
 
     // PUT /api/materials/{id}
+    /**
+ * @OA\Put(
+ *     path="/api/materials/{id}",
+ *     tags={"Materiales - Admin"},
+ *     summary="Actualizar material (solo admin)",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\RequestBody(
+ *         @OA\JsonContent(
+ *             @OA\Property(property="name", type="string", example="PLA+"),
+ *             @OA\Property(property="density_g_cm3", type="number", example=1.24),
+ *             @OA\Property(property="price_per_gram", type="number", example=2.50),
+ *             @OA\Property(property="active", type="boolean", example=true)
+ *         )
+ *     ),
+ *     @OA\Response(response=200, description="Material actualizado"),
+ *     @OA\Response(response=404, description="Material no encontrado")
+ * )
+ */
     public function update(Request $request, Material $material): JsonResponse
     {
         $data = $request->validate([
@@ -49,6 +99,17 @@ class MaterialController extends Controller
     }
 
     // DELETE /api/materials/{id}
+    /**
+ * @OA\Delete(
+ *     path="/api/materials/{id}",
+ *     tags={"Materiales - Admin"},
+ *     summary="Eliminar material (solo admin)",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Material eliminado"),
+ *     @OA\Response(response=404, description="Material no encontrado")
+ * )
+ */
     public function destroy(Material $material): JsonResponse
     {
         $material->update(['active' => false]);
@@ -56,6 +117,25 @@ class MaterialController extends Controller
     }
 
     // POST /api/materials/{id}/colors
+    /**
+ * @OA\Post(
+ *     path="/api/materials/{id}/colors",
+ *     tags={"Materiales - Admin"},
+ *     summary="Agregar color a un material (solo admin)",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             required={"color_name","hex_code"},
+ *             @OA\Property(property="color_name", type="string", example="Rojo"),
+ *             @OA\Property(property="hex_code", type="string", example="#DC2626"),
+ *             @OA\Property(property="extra_cost", type="number", example=0)
+ *         )
+ *     ),
+ *     @OA\Response(response=201, description="Color agregado")
+ * )
+ */
     public function addColor(Request $request, Material $material): JsonResponse
     {
         $data = $request->validate([
@@ -68,6 +148,18 @@ class MaterialController extends Controller
     }
 
     // DELETE /api/material-colors/{id}
+    /**
+ * @OA\Delete(
+ *     path="/api/materials/{id}/colors/{colorId}",
+ *     tags={"Materiales - Admin"},
+ *     summary="Eliminar color de un material (solo admin)",
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="colorId", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="Color eliminado"),
+ *     @OA\Response(response=404, description="Color no encontrado")
+ * )
+ */
     public function removeColor(MaterialColor $color): JsonResponse
     {
         $color->delete();

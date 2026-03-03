@@ -18,6 +18,116 @@
         }
     ],
     "paths": {
+        "/api/admin/stats": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Estadísticas del dashboard (solo admin)",
+                "operationId": "934bda1c5d4732ef612d3d51e9ef367e",
+                "responses": {
+                    "200": {
+                        "description": "Estadísticas generales del taller",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "orders_this_month": {
+                                            "type": "integer",
+                                            "example": 12
+                                        },
+                                        "pending_review": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "in_production": {
+                                            "type": "integer",
+                                            "example": 5
+                                        },
+                                        "ready_for_pickup": {
+                                            "type": "integer",
+                                            "example": 2
+                                        },
+                                        "revenue_this_month": {
+                                            "type": "number",
+                                            "example": 8500
+                                        },
+                                        "active_clients": {
+                                            "type": "integer",
+                                            "example": 7
+                                        },
+                                        "orders_by_status": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Solo admin"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/clients": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Listar clientes registrados (solo admin)",
+                "operationId": "293f8d9df87a127e1dc8eadc87d6719e",
+                "responses": {
+                    "200": {
+                        "description": "Lista de clientes con conteo de pedidos",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "properties": {
+                                            "id": {
+                                                "type": "integer"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "email": {
+                                                "type": "string"
+                                            },
+                                            "phone": {
+                                                "type": "string"
+                                            },
+                                            "orders_count": {
+                                                "type": "integer"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Solo admin"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/auth/register": {
             "post": {
                 "tags": [
@@ -163,6 +273,451 @@
                 "responses": {
                     "200": {
                         "description": "Datos del usuario"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/avatar": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Actualizar foto de perfil",
+                "operationId": "86a52e9c4649e7c123c72e3e35a0f840",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "avatar_file": {
+                                        "description": "Archivo de imagen (máx 5MB)",
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "avatar_url": {
+                                        "description": "URL externa de la imagen",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Foto actualizada con éxito"
+                    },
+                    "400": {
+                        "description": "No se recibió imagen"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/finishes": {
+            "get": {
+                "tags": [
+                    "Acabados"
+                ],
+                "summary": "Listar acabados disponibles (público)",
+                "operationId": "f04a5d2ebd5720414f1092398027c1ad",
+                "responses": {
+                    "200": {
+                        "description": "Lista de acabados con su costo"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Acabados - Admin"
+                ],
+                "summary": "Crear acabado (solo admin)",
+                "operationId": "f075679fd2322c22c23deb2562ca6893",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "fixed_cost"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Lijado fino"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "Superficie suave al tacto"
+                                    },
+                                    "fixed_cost": {
+                                        "type": "number",
+                                        "example": 50
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Acabado creado"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/finishes/{id}": {
+            "put": {
+                "tags": [
+                    "Acabados - Admin"
+                ],
+                "summary": "Actualizar acabado (solo admin)",
+                "operationId": "898909e786d9b34d2925dae79eecf120",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Lijado medio"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "fixed_cost": {
+                                        "type": "number",
+                                        "example": 40
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Acabado actualizado"
+                    },
+                    "404": {
+                        "description": "Acabado no encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Acabados - Admin"
+                ],
+                "summary": "Eliminar acabado (solo admin)",
+                "description": "No se puede eliminar si hay pedidos que usan este acabado.",
+                "operationId": "0245747b7d7e25e1cb414f69bfd93fc4",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Acabado eliminado"
+                    },
+                    "422": {
+                        "description": "No se puede eliminar, está en uso"
+                    },
+                    "404": {
+                        "description": "Acabado no encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/materials": {
+            "get": {
+                "tags": [
+                    "Materiales"
+                ],
+                "summary": "Listar materiales con colores (público)",
+                "operationId": "ed04a96cf463463a497cf4d45b931cd1",
+                "responses": {
+                    "200": {
+                        "description": "Lista de materiales activos con sus colores disponibles"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Materiales - Admin"
+                ],
+                "summary": "Crear material (solo admin)",
+                "operationId": "9c9de3177d10f03d75f9573371f9186f",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "density_g_cm3",
+                                    "price_per_gram"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "PLA"
+                                    },
+                                    "density_g_cm3": {
+                                        "type": "number",
+                                        "example": 1.24
+                                    },
+                                    "price_per_gram": {
+                                        "type": "number",
+                                        "example": 2
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Material creado"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/materials/{id}": {
+            "put": {
+                "tags": [
+                    "Materiales - Admin"
+                ],
+                "summary": "Actualizar material (solo admin)",
+                "operationId": "2bc3ff8daffbd0e30f6673202d857344",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "PLA+"
+                                    },
+                                    "density_g_cm3": {
+                                        "type": "number",
+                                        "example": 1.24
+                                    },
+                                    "price_per_gram": {
+                                        "type": "number",
+                                        "example": 2.5
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Material actualizado"
+                    },
+                    "404": {
+                        "description": "Material no encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Materiales - Admin"
+                ],
+                "summary": "Eliminar material (solo admin)",
+                "operationId": "9c353fdc77702c2abb6f63783f4e44f1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Material eliminado"
+                    },
+                    "404": {
+                        "description": "Material no encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/materials/{id}/colors": {
+            "post": {
+                "tags": [
+                    "Materiales - Admin"
+                ],
+                "summary": "Agregar color a un material (solo admin)",
+                "operationId": "a4a0008d77967e2fce0fd11acca326dd",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "color_name",
+                                    "hex_code"
+                                ],
+                                "properties": {
+                                    "color_name": {
+                                        "type": "string",
+                                        "example": "Rojo"
+                                    },
+                                    "hex_code": {
+                                        "type": "string",
+                                        "example": "#DC2626"
+                                    },
+                                    "extra_cost": {
+                                        "type": "number",
+                                        "example": 0
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Color agregado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/materials/{id}/colors/{colorId}": {
+            "delete": {
+                "tags": [
+                    "Materiales - Admin"
+                ],
+                "summary": "Eliminar color de un material (solo admin)",
+                "operationId": "b7d5bbb3ec1ffacd99562c5e91055119",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "colorId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Color eliminado"
+                    },
+                    "404": {
+                        "description": "Color no encontrado"
                     }
                 },
                 "security": [
@@ -663,8 +1218,28 @@
     },
     "tags": [
         {
+            "name": "Admin",
+            "description": "Admin"
+        },
+        {
             "name": "Autenticación",
             "description": "Autenticación"
+        },
+        {
+            "name": "Acabados",
+            "description": "Acabados"
+        },
+        {
+            "name": "Acabados - Admin",
+            "description": "Acabados - Admin"
+        },
+        {
+            "name": "Materiales",
+            "description": "Materiales"
+        },
+        {
+            "name": "Materiales - Admin",
+            "description": "Materiales - Admin"
         },
         {
             "name": "Pedidos",

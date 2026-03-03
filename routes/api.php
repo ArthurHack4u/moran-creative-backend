@@ -19,7 +19,7 @@ Route::get('finishes',               [FinishController::class,  'index']);
 
 // ── Autenticadas ──────────────────────────────────────────────────
 Route::middleware('auth:api')->group(function () {
-
+    Route::post('/auth/avatar', [AuthController::class, 'updateAvatar']);
     Route::get('/orders/files/{fileId}/download', [OrderController::class, 'downloadFile']);
     Route::post('orders/{order}/payment-proof', [OrderController::class, 'uploadPaymentProof']);
     Route::post('auth/logout',  [AuthController::class, 'logout']);
